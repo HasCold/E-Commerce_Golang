@@ -1,0 +1,21 @@
+The project follows the clean architecture
+
+Example :- 
+
+├── entity/            # Core business logic (Entities)
+│   └── todo.go
+│
+├── usecase/           # Application logic (Use Cases)
+│   └── todo_usecase.go
+│
+├── repository/        # Data layer (Interfaces)
+│   └── todo_repository.go
+│
+├── handler/           # Interface Adapters (API/Handlers)
+│   └── todo_handler.go
+│
+├── infrastructure/    # Frameworks and Drivers (DB, Routes, etc.)
+│   ├── database.go
+│   └── router.go
+│
+└── main.go            # Application entry point

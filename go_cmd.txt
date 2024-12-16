@@ -1,0 +1,4 @@
+. go mod init <module-name>  // first we do "go mod init" to initialize the mod file 
+. go mod tidy  //  Install all the packages dependency related to our code
+
+
