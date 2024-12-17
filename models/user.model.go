@@ -1,4 +1,4 @@
-package user_model
+package model
 
 import (
 	"time"
@@ -14,20 +14,20 @@ import (
 // If both models are in the same package (e.g., models), you can directly reference Product_Model from user_model.
 
 type User struct {
-	ID              primitive.ObjectID `json:_id bson:_id`
-	First_Name      *string
-	Last_Name       *string
-	Password        *string
-	Email           *string
-	Phone           *string
-	Token           *string
-	Refresh_Token   *string
-	Created_At      time.Time
-	Updated_At      time.Time
-	User_ID         *string
-	User_Cart       []ProductUser
-	Address_Details []Address
-	Order_Status    []Order
+	ID              primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	First_Name      *string            `json:"first_name" 	validate:"required, min=4, max=30" bson:"first_name"`
+	Last_Name       *string            `json:"last_name" 	validate:"required, min=4, max=30" bson:"last_name"`
+	Password        *string            `json:"password" 	validate:"required, min=6, max=25" bson:"password"`
+	Email           *string            `json:"email" 		validate:"required, email" bson:"email"`
+	Phone           *string            `json:"phone" 		validate:"required" bson:"phone"`
+	Token           *string            `json:"token" bson:"token"`
+	Refresh_Token   *string            `json:"refresh_token" bson:"refresh_token"`
+	Created_At      time.Time          `json:"created_at" bson:"created_at"`
+	Updated_At      time.Time          `json:"updated_at" bson:"updated_at"`
+	User_ID         *string            `json:"user_id" bson:"user_id"`
+	User_Cart       []ProductUser      `json:"user_cart" bson:"user_cart"`
+	Address_Details []Address          `json:"address_details" bson:"address_details"`
+	Order_Status    []Order            `json:"order_status" bson:"order_status"`
 }
 
 // ---- Reason to Use *string (Pointer String)

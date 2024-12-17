@@ -22,9 +22,7 @@ func main() {
 	// Product Data from Product Collection and User Data from User Collection
 	app := controllers.NewApplication(database.ProductData(database.Client, "Product"), database.UserProduct(database.Client, "User"))
 
-	router := gin.New() // New returns a new blank Engine instance without any middleware attached.
-
-	router.Use(gin.Logger()) // Logger instances a Logger middleware that will write the logs to gin.DefaultWriter.
+	router := gin.Default() // Default returns a gin engine instance which is used to build a middleware, logger and routing purposes. creates a new Gin router with two middlewares already included : Logger and Recovery Middleware
 
 	routes.UserRoutes(router)
 	router.Use(middleware.Authentication())
