@@ -2,16 +2,16 @@ package controllers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
-	"ecommerce/database"
 	"ecommerce/model"
+	"ecommerce/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -54,45 +54,60 @@ func Signup() gin.HandlerFunc {
 		}
 
 		count, err := UserCollection.CountDocument(ctx, bson.M{"email": user.email})
-		if err != nil {
-			// Triggers a panic: After logging the error, it calls the panic() function, which stops the normal execution of the program and begins the unwinding of the stack. This allows deferred functions to execute before the program terminates.
-			log.Panic(err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err,
-			})
-			return
-		}
+		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
 
 		if count > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": "User already exist",
-			})
+			utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits")
 		}
 
 		count, err = UserCollection.CountDocument(ctx, bson.M{"phone": user.phone})
-		if err != nil {
-			log.Panic(err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"message": err,
-			})
-			return
-		}
+		utils.ErrorHandler(err, c, http.StatusBadRequest, false, err)
 
 		if count > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": "Phone Number already exist",
-			})
+			utils.ResponseHandler(c, http.StatusBadRequest, false, "Phone number already exists")
 		}
 
+		password := HashPassword(*user.Password)
+		user.Password = &password // rather than copying the whole password we have to pass the actual memory address reference of password
+
+		// RFC3339 is a standard date-time format, such as:  2024-12-18T14:30:15Z. To ensure the things are consistent in DB
+		user.Created_At, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+		user.Updated_At, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+		user.ID = primitive.NewObjectID
+		user.User_ID = user.ID.Hex() // Hex returns the hex encoding of the ObjectID as a string.
+
+		token, refresh_token, _ := utils.TokenGenerator(*user.Email, *user.First_Name, *user.Last_Name, *user.User_ID)
+
+		user.Token = &token
+		user.Refresh_Token = &refresh_token
+		user.User_Cart = make([]model.ProductUser, 0) // make a built-in datatype or function helps to create and initialize different data-types like slices, map and channels
+		user.Address_Details = make([]model.Address, 0)
+		user.Order_Status = make([]model.Order, 0)
+
+		_, insertErr := UserCollection.InsertOne(ctx, user)
+		utils.ErrorHandler(insertErr, c, http.StatusInternalServerError, false, insertErr)
+
+		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed In !")
 	}
 
 }
 
 func Login() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+		defer cancel()
 
+		if c.Request.Method != "POST" {
+			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request Method is Invalid !"})
+		}
+
+		var user model.User
+
+		if err := c.BindJSON(&user); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+	}
 }
 
 // bson.M{}  -->>  M is an unordered representation of a BSON document. This type should be used when the order of the elements does not matter. This type is handled as a regular map[string]interface{} when encoding and decoding.

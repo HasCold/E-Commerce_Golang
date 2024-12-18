@@ -15,11 +15,11 @@ import (
 
 type User struct {
 	ID              primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	First_Name      *string            `json:"first_name" 	validate:"required, min=4, max=30" bson:"first_name"`
-	Last_Name       *string            `json:"last_name" 	validate:"required, min=4, max=30" bson:"last_name"`
-	Password        *string            `json:"password" 	validate:"required, min=6, max=25" bson:"password"`
-	Email           *string            `json:"email" 		validate:"required, email" bson:"email"`
-	Phone           *string            `json:"phone" 		validate:"required" bson:"phone"`
+	First_Name      *string            `json:"first_name" validate:"required, min=4, max=30" bson:"first_name"`
+	Last_Name       *string            `json:"last_name" validate:"required, min=4, max=30" bson:"last_name"`
+	Password        *string            `json:"password" validate:"required, min=6, max=25" bson:"password"`
+	Email           *string            `json:"email" validate:"required, email" bson:"email"`
+	Phone           *string            `json:"phone" validate:"required" bson:"phone"`
 	Token           *string            `json:"token" bson:"token"`
 	Refresh_Token   *string            `json:"refresh_token" bson:"refresh_token"`
 	Created_At      time.Time          `json:"created_at" bson:"created_at"`
