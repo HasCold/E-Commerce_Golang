@@ -2,3 +2,6 @@
 . go mod tidy  //  Install all the packages dependency related to our code
 
 
+. go get -u <github-package-url>  // to install the package locally
+
+. go install <github-package-url>  // to install the package globally 

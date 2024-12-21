@@ -20,7 +20,8 @@ func main() {
 	}
 
 	// Product Data from Product Collection and User Data from User Collection
-	app := controllers.NewApplication(database.ProductData(database.Client, "Product"), database.UserProduct(database.Client, "User"))
+	// Cart Controller
+	app := controllers.NewApplication(database.ProductData(database.Client, "Products"), database.UserData(database.Client, "Users"))
 
 	router := gin.Default() // Default returns a gin engine instance which is used to build a middleware, logger and routing purposes. creates a new Gin router with two middlewares already included : Logger and Recovery Middleware
 
@@ -28,7 +29,7 @@ func main() {
 	router.Use(middleware.Authentication())
 
 	router.GET("/addtocart", app.AddToCart())
-	router.GET("/removeitem", app.RemoveItem())
+	router.GET("/removeitem", app.RemoveItemFromCart())
 	router.GET("/cartcheckout", app.BuyFromCart())
 	router.GET("/instantbuy", app.InstantBuy())
 

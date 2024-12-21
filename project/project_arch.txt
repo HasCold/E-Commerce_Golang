@@ -19,3 +19,19 @@ Example :-
 │   └── router.go
 │
 └── main.go            # Application entry point
+
+
+Model-View-Controller architecture (MVC) :- 
+
+Suppose Cart-Level Route :- 
+
+Route:  /cart/addtocart
+  |
+  |
+  V
+Controller: func AddToCart() {}  // This AddToCart function will invoked/call a database function called AddProductToCart() 
+(./database/cart.go)
+  |
+  |
+  V
+Database: AddProductToCart()  // All these functions are One:to:One relationship

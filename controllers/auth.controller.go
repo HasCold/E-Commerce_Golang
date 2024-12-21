@@ -2,9 +2,12 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"time"
 
+	"ecommerce/database"
 	"ecommerce/model"
 	"ecommerce/utils"
 
@@ -13,20 +16,38 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
-var validate *validator.Validate
-var UserCollection *mongo.Collection = database.UserProduct(database.Client, "Users")
+var validate *validator.Validate = validator.New()
+var UserCollection *mongo.Collection = database.UserData(database.Client, "Users")
 
 func HashPassword(password string) string {
+	// ASCII Characters (Basic English):
+	// Each character takes 1 byte (e.g., A, z, 0, !).
+	// 72 ASCII characters = 72 bytes.
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		log.Panic(err)
+	}
 
+	return string(bytes)
 }
 
-func VerifyPassword(userPassword string, givenPassword string) (bool, string) {
+func VerifyPassword(userPassword string, hashPassword string) (bool, string) {
+	err := bcrypt.CompareHashAndPassword([]byte(hashPassword), []byte(userPassword))
+	valid := true
+	msg := ""
 
+	if err != nil {
+		msg = "Login or Password is incorrect"
+		valid = false
+	}
+
+	return valid, msg
 }
 
-func Signup() gin.HandlerFunc {
+func SignUp() gin.HandlerFunc {
 
 	// Closure Func
 	return func(c *gin.Context) { // c is a pointer to a gin.Context struct
@@ -35,6 +56,7 @@ func Signup() gin.HandlerFunc {
 
 		if c.Request.Method != "POST" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request method is invalid"})
+			return
 		}
 
 		var user model.User
@@ -57,18 +79,18 @@ func Signup() gin.HandlerFunc {
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
 
 		if count > 0 {
-			utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits")
+			utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits", nil)
 		}
 
 		count, err = UserCollection.CountDocument(ctx, bson.M{"phone": user.phone})
 		utils.ErrorHandler(err, c, http.StatusBadRequest, false, err)
 
 		if count > 0 {
-			utils.ResponseHandler(c, http.StatusBadRequest, false, "Phone number already exists")
+			utils.ResponseHandler(c, http.StatusBadRequest, false, "Phone number already exists", nil)
 		}
 
 		password := HashPassword(*user.Password)
-		user.Password = &password // rather than copying the whole password we have to pass the actual memory address reference of password
+		user.Password = &password
 
 		// RFC3339 is a standard date-time format, such as:  2024-12-18T14:30:15Z. To ensure the things are consistent in DB
 		user.Created_At, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
@@ -87,7 +109,7 @@ func Signup() gin.HandlerFunc {
 		_, insertErr := UserCollection.InsertOne(ctx, user)
 		utils.ErrorHandler(insertErr, c, http.StatusInternalServerError, false, insertErr)
 
-		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed In !")
+		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed In !", nil)
 	}
 
 }
@@ -99,16 +121,36 @@ func Login() gin.HandlerFunc {
 
 		if c.Request.Method != "POST" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request Method is Invalid !"})
+			return
 		}
 
 		var user model.User
+		var foundUser model.User
 
 		if err := c.BindJSON(&user); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 
+		filter := bson.M{"email", user.email} // Map
+		err := UserCollection.FindOne(ctx, filter).Decode(&foundUser)
+		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Login Email or Password is Incorrect !")
+
+		PasswordisValid, msg := VerifyPassword(*user.Password, *foundUser.Password)
+
+		if !PasswordisValid {
+			fmt.Println(msg)
+			utils.ResponseHandler(c, http.StatusInternalServerError, false, "Error: "+msg, nil)
+		}
+
+		token, refreshToken, _ := utils.TokenGenerator(*foundUser.Email, *foundUser.First_Name, *foundUser.Last_Name, *foundUser.User_ID)
+
+		utils.UpdateAllTokens(token, refreshToken, *foundUser.User_ID)
+
+		utils.ResponseHandler(c, http.StatusFound, true, "Login Successfully !", foundUser)
 	}
 }
 
-// bson.M{}  -->>  M is an unordered representation of a BSON document. This type should be used when the order of the elements does not matter. This type is handled as a regular map[string]interface{} when encoding and decoding.
-// bson.D{}  -->> D is an ordered representation of a BSON document. This type should be used when the order of the elements matters, such as MongoDB command documents.
+// bson.D{}  -->> D is an ordered representation of a BSON document. This type should be used when the order of the elements matters, such as MongoDB command documents. --->> (Slice)
+
+// bson.M{}  -->>  M is an unordered representation of a BSON document. This type should be used when the order of the elements does not matter. This type is handled as a regular map[string]interface{} when encoding and decoding. --->> (Map)

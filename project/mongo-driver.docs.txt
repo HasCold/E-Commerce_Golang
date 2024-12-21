@@ -1,0 +1,6 @@
+
+---------------------------------- IMPORTANT DOCS FOR MONGODB ------------------------------------------
+
+. https://github.com/mongodb/mongo-go-driver
+
+. https://www.mongodb.com/docs/drivers/go/current/fundamentals/bson/#std-label-golang-bson
