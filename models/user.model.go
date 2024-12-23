@@ -1,4 +1,4 @@
-package model
+package models
 
 import (
 	"time"
@@ -26,7 +26,7 @@ type User struct {
 	Updated_At      time.Time          `json:"updated_at" bson:"updated_at"`
 	User_ID         *string            `json:"user_id" bson:"user_id"`
 	User_Cart       []ProductUser      `json:"user_cart" bson:"user_cart"`
-	Address_Details []Address          `json:"address_details" bson:"address_details"`
+	Address_Details []Address          `json:"address" bson:"address"`
 	Order_Status    []Order            `json:"order_status" bson:"order_status"`
 }
 

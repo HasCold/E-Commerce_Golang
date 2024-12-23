@@ -1,0 +1,33 @@
+Some common HTTP status codes in each class include:
+
+1xx: 100 Continue, 101 Switching Protocols
+2xx: 200 OK, 201 Created, 204 No Content
+3xx: 301 Moved Permanently, 302 Found, 304 Not Modified
+4xx: 400 Bad Request, 401 Unauthorized, 404 Not Found
+5xx: 500 Internal Server Error, 503 Service Unavailable, 504 Gateway Timeout
+
+
+2xx Success Codes:
+
+200 OK: The request was successful, and the response contains the requested data.
+201 Created: The request was successful, and a new resource has been created (commonly used after a POST request).
+204 No Content: The request was successful, and there is no response body (commonly used after a successful DELETE request).
+
+3xx Redirection Codes:
+
+301 Moved Permanently: The requested resource has been permanently moved to a different URL.
+302 Found (or 307 Temporary Redirect): The requested resource has been temporarily moved to a different URL.
+304 Not Modified: The client's cached version of the resource is still valid (commonly used in response to conditional GET requests).
+
+4xx Client Error Codes:
+
+400 Bad Request: The request is invalid or cannot be understood by the server.
+401 Unauthorized: The request requires authentication, and the client did not provide valid credentials.
+403 Forbidden: The server understood the request, but it refuses to fulfill it.
+404 Not Found: The requested resource could not be found on the server.
+
+5xx Server Error Codes:
+
+500 Internal Server Error: The server encountered an error while processing the request.
+502 Bad Gateway: The server, while acting as a gateway or proxy, received an invalid response from an upstream server.
+503 Service Unavailable: The server is temporarily unable to handle the request (often due to maintenance or overload).

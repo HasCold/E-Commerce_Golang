@@ -20,6 +20,7 @@ func ErrorHandler(err error, c *gin.Context, statusCode int, success bool, messa
 	}
 
 	if err != nil {
+		log.Println(err)
 		// Triggers a panic: After logging the error, it calls the panic() function, which stops the normal execution of the program and begins the unwinding of the stack. This allows deferred functions to execute before the program terminates.
 		log.Panic(err)
 

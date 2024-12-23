@@ -1,0 +1,107 @@
+The query you provided uses the MongoDB `$group` aggregation stage to group documents by a field (`address_id`) and calculate a count for each group. Let’s break it down, especially focusing on the `$sum` part:
+
+```go
+grouping_stage := bson.D{
+    {Key: "$group", Value: bson.D{
+        {Key: "_id", Value: "$address_id"},          // Group by the 'address_id' field
+        {Key: "count", Value: bson.D{                // Create a 'count' field in the result
+            {Key: "$sum", Value: 1},                 // For each document in the group, increment by 1
+        }},
+    }},
+}
+```
+
+### **Explanation of the Query:**
+
+1. **`$group` Stage**:
+   - This is an aggregation operation in MongoDB that groups documents based on a specified expression or field.
+   - It takes a series of key-value pairs that define how to group the documents and what to do with the grouped data.
+
+2. **`_id`**:
+   - In the `$group` stage, the `_id` field is a special field that defines the grouping criterion. It can be any expression or field.
+   - In your case, the documents are grouped by the field `address_id` (this means the result will be aggregated by unique `address_id` values).
+
+   ```go
+   {Key: "_id", Value: "$address_id"}
+   ```
+
+   This groups the documents based on their `address_id` field. Each unique `address_id` will create a group.
+
+3. **`count`**:
+   - This is a custom field you are creating in the output documents, and it will store the result of a calculation.
+   - Here, you are using the `$sum` operator to count the number of documents in each group.
+
+   ```go
+   {Key: "count", Value: bson.D{
+       {Key: "$sum", Value: 1},
+   }}
+   ```
+
+   - **`$sum`** is typically used for summing values in a numeric field, but in this case, you're using it with the value `1`.
+   - By using `1` with `$sum`, you are essentially **counting the number of documents** in each group. For every document in a given group, MongoDB adds `1` to the sum, effectively counting the number of documents that belong to that group.
+
+---
+
+### **Example Document Before Grouping**
+Let’s say the collection has the following documents:
+
+```json
+{
+    "_id": 1,
+    "address_id": 101
+},
+{
+    "_id": 2,
+    "address_id": 102
+},
+{
+    "_id": 3,
+    "address_id": 101
+},
+{
+    "_id": 4,
+    "address_id": 103
+}
+```
+
+### **What Happens During the `$group` Operation?**
+
+1. **Grouping by `address_id`**:
+   - The documents will be grouped based on the `address_id` field.
+   
+2. **Counting Documents in Each Group**:
+   - For each group of documents that share the same `address_id`, the `count` field will be calculated as the sum of `1`s for each document in the group.
+
+### **Output After Grouping**
+After the `$group` operation is applied, the resulting output will look like:
+
+```json
+{
+    "_id": 101,
+    "count": 2
+},
+{
+    "_id": 102,
+    "count": 1
+},
+{
+    "_id": 103,
+    "count": 1
+}
+```
+
+### **How `$sum` Works in This Context:**
+- For `address_id: 101`, there are 2 documents, so the count is `2`.
+- For `address_id: 102`, there is 1 document, so the count is `1`.
+- For `address_id: 103`, there is 1 document, so the count is `1`.
+
+The `$sum` operator is **incrementing the count by 1** for each document in the group.
+
+---
+
+### **Key Takeaways**
+- **`$group`**: This stage allows you to group documents based on a specific field and apply aggregation functions to calculate values for each group.
+- **`_id`**: The field by which you want to group the documents. Here, it is `address_id`.
+- **`$sum`**: Although `$sum` is generally used for summing numbers, it can also be used to count the number of documents in a group by specifying `1` as the value. Each document in the group contributes `1` to the sum, thus counting the documents.
+
+This approach is helpful for getting a count of documents for each `address_id` in the collection.

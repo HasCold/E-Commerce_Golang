@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"ecommerce/database"
+	"ecommerce/models"
 	"ecommerce/utils"
 	"errors"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -70,7 +72,8 @@ func (app *Application) AddToCart() gin.HandlerFunc {
 			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
 		}
 
-		utils.ResponseHandler(c, 200, true, "Successfully added to the cart")
+		utils.ResponseHandler(c, 200, true, "Successfully added to the cart", nil)
+		ctx.Done()
 	}
 }
 
@@ -105,13 +108,70 @@ func (app *Application) RemoveItemFromCart() gin.HandlerFunc {
 			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
 		}
 
-		utils.ResponseHandler(c, 200, true, "Successfully remove item from the cart")
+		utils.ResponseHandler(c, 200, true, "Successfully remove item from the cart", nil)
+		ctx.Done()
 	}
 
 }
 
 func GetItemFromCart() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method != "POST" {
+			c.JSON(http.StatusMethodNotAllowed, "Request method is invalid")
+			return
+		}
 
+		user_id := c.Query("user_id")
+		if user_id == "" {
+			c.Header("Content-Type", "application/json")
+			c.JSON(http.StatusNotFound, "Invalid id")
+			c.Abort()
+			return
+		}
+
+		// Convert the string id into primitive object id
+		userId, _ := primitive.ObjectIDFromHex(user_id)
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		var filledCart models.User
+
+		find := bson.D{"_id", userId}
+		err := UserCollection.FindOne(ctx, find).Decode(&filledCart)
+		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong. Please try again !")
+
+		filter_match_stage := bson.D{"$match", bson.D{"_id", userId}}
+		unwind_stage := bson.D{"$unwind", bson.D{"path", "$user_cart"}}
+		// The aggregation pipeline uses the $group stage to group the documents by the _id field,
+		grouping_stage := bson.D{"$group", bson.D{"_id", "$_id"}, bson.D{"total", bson.D{"$sum", "$user_cart.price"}}}
+
+		cursor, err := UserCollection.Aggregate(ctx, mongo.Pipeline{filter_match_stage, unwind_stage, grouping_stage})
+		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong !")
+
+		var listing []bson.M
+
+		for cursor.Next(ctx) {
+			if err := cursor.Decode(&listing); err != nil {
+				log.Println("Error while doing aggregation in GetItemFromCart function ", err)
+				log.Panic(err)
+			}
+		}
+
+		if err = cursor.Err(); err != nil {
+			log.Println(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			log.Fatal()
+		}
+
+		defer cursor.Close(ctx)
+
+		for _, json := range listing {
+			utils.ResponseHandler(c, http.StatusOK, true, "", json["total"])
+			utils.ResponseHandler(c, http.StatusOK, true, "", filledCart.User_Cart)
+		}
+
+		ctx.Done()
+	}
 }
 
 func (app *Application) BuyFromCart() gin.HandlerFunc {
@@ -128,7 +188,8 @@ func (app *Application) BuyFromCart() gin.HandlerFunc {
 		err := database.BuyItemFromCart(ctx, app.userCollection, userQueryId)
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
 
-		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully placed the order")
+		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully placed the order", nil)
+		ctx.Done()
 	}
 }
 
@@ -163,6 +224,7 @@ func (app *Application) InstantBuy() gin.HandlerFunc {
 			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
 		}
 
-		utils.ResponseHandler(c, 200, true, "Successfully placed the order")
+		utils.ResponseHandler(c, 200, true, "Successfully placed the order", nil)
+		ctx.Done()
 	}
 }

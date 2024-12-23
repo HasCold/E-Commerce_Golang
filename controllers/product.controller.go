@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"ecommerce/database"
-	"ecommerce/model"
+	"ecommerce/models"
 	"ecommerce/utils"
 	"log"
 	"net/http"
@@ -25,7 +25,7 @@ func GetAllProducts() gin.HandlerFunc {
 			return
 		}
 
-		var ProductList []model.Product
+		var ProductList []models.Product
 
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
@@ -51,6 +51,7 @@ func GetAllProducts() gin.HandlerFunc {
 		defer cursor.Close(ctx)
 
 		utils.ResponseHandler(c, 200, true, "Successfully get all the products", ProductList)
+		ctx.Done()
 	}
 }
 
@@ -61,7 +62,7 @@ func SearchProductByQuery() gin.HandlerFunc {
 			return
 		}
 
-		var searchProducts []model.Product
+		var searchProducts []models.Product
 
 		queryParam := c.Query("name") // ?name="iphone"
 		if queryParam == "" {
@@ -75,9 +76,11 @@ func SearchProductByQuery() gin.HandlerFunc {
 		defer cancel()
 
 		findOptions := options.Find()
+		// The $regex operator is used to perform a regex search with the case-insensitive(Mean uppercase and lowercase letter treated be as same) option $options: 'i', and the caret ^ in the regex pattern ensures that the search starts with the given letters.
 		search := bson.M{
 			"product_name": bson.M{
-				"$regex": queryParam,
+				"$regex":   "^" + queryParam,
+				"$options": "i",
 			},
 		}
 		cursor, err := ProdCollection.Find(ctx, search, findOptions)
@@ -99,6 +102,7 @@ func SearchProductByQuery() gin.HandlerFunc {
 		defer cursor.Close(ctx)
 
 		utils.ResponseHandler(c, http.StatusOK, true, "", searchProducts)
+		ctx.Done()
 	}
 }
 

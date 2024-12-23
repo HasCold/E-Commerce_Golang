@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"ecommerce/database"
-	"ecommerce/model"
+	"ecommerce/models"
 	"ecommerce/utils"
 
 	"github.com/gin-gonic/gin"
@@ -59,7 +59,7 @@ func SignUp() gin.HandlerFunc {
 			return
 		}
 
-		var user model.User
+		var user models.User
 
 		// Binds JSON data from the request body to the user variable. If the request body contains invalid JSON or doesn't match the User struct, it returns an error.
 		if err := c.BindJSON(&user); err != nil {
@@ -75,14 +75,14 @@ func SignUp() gin.HandlerFunc {
 			})
 		}
 
-		count, err := UserCollection.CountDocument(ctx, bson.M{"email": user.email})
+		count, err := UserCollection.CountDocument(ctx, bson.M{"email": user.Email})
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
 
 		if count > 0 {
 			utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits", nil)
 		}
 
-		count, err = UserCollection.CountDocument(ctx, bson.M{"phone": user.phone})
+		count, err = UserCollection.CountDocument(ctx, bson.M{"phone": user.Phone})
 		utils.ErrorHandler(err, c, http.StatusBadRequest, false, err)
 
 		if count > 0 {
@@ -102,14 +102,15 @@ func SignUp() gin.HandlerFunc {
 
 		user.Token = &token
 		user.Refresh_Token = &refresh_token
-		user.User_Cart = make([]model.ProductUser, 0) // make a built-in datatype or function helps to create and initialize different data-types like slices, map and channels
-		user.Address_Details = make([]model.Address, 0)
-		user.Order_Status = make([]model.Order, 0)
+		user.User_Cart = make([]models.ProductUser, 0) // make a built-in datatype or function helps to create and initialize different data-types like slices, map and channels
+		user.Address_Details = make([]models.Address, 0)
+		user.Order_Status = make([]models.Order, 0)
 
 		_, insertErr := UserCollection.InsertOne(ctx, user)
 		utils.ErrorHandler(insertErr, c, http.StatusInternalServerError, false, insertErr)
 
 		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed In !", nil)
+		ctx.Done()
 	}
 
 }
@@ -124,15 +125,15 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
-		var user model.User
-		var foundUser model.User
+		var user models.User
+		var foundUser models.User
 
 		if err := c.BindJSON(&user); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		filter := bson.M{"email", user.email} // Map
+		filter := bson.M{"email", user.Email} // Map
 		err := UserCollection.FindOne(ctx, filter).Decode(&foundUser)
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Login Email or Password is Incorrect !")
 
@@ -148,6 +149,7 @@ func Login() gin.HandlerFunc {
 		utils.UpdateAllTokens(token, refreshToken, *foundUser.User_ID)
 
 		utils.ResponseHandler(c, http.StatusFound, true, "Login Successfully !", foundUser)
+		ctx.Done()
 	}
 }
 
