@@ -75,15 +75,16 @@ func SignUp() gin.HandlerFunc {
 			})
 		}
 
-		count, err := UserCollection.CountDocument(ctx, bson.M{"email": user.Email})
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
+		filter := bson.D{{Key: "email", Value: user.Email}}
+		count, err := UserCollection.CountDocuments(ctx, filter)
+		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
 
 		if count > 0 {
 			utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits", nil)
 		}
 
-		count, err = UserCollection.CountDocument(ctx, bson.M{"phone": user.Phone})
-		utils.ErrorHandler(err, c, http.StatusBadRequest, false, err)
+		count, err = UserCollection.CountDocuments(ctx, bson.M{"phone": user.Phone})
+		utils.ErrorHandler(err, c, http.StatusBadRequest, false, err.Error())
 
 		if count > 0 {
 			utils.ResponseHandler(c, http.StatusBadRequest, false, "Phone number already exists", nil)
@@ -95,8 +96,9 @@ func SignUp() gin.HandlerFunc {
 		// RFC3339 is a standard date-time format, such as:  2024-12-18T14:30:15Z. To ensure the things are consistent in DB
 		user.Created_At, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 		user.Updated_At, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
-		user.ID = primitive.NewObjectID
-		user.User_ID = user.ID.Hex() // Hex returns the hex encoding of the ObjectID as a string.
+		user.ID = primitive.NewObjectID()
+		hexValue := user.ID.Hex() // Hex returns the hex encoding of the ObjectID as a string.
+		user.User_ID = &hexValue
 
 		token, refresh_token, _ := utils.TokenGenerator(*user.Email, *user.First_Name, *user.Last_Name, *user.User_ID)
 
@@ -107,7 +109,7 @@ func SignUp() gin.HandlerFunc {
 		user.Order_Status = make([]models.Order, 0)
 
 		_, insertErr := UserCollection.InsertOne(ctx, user)
-		utils.ErrorHandler(insertErr, c, http.StatusInternalServerError, false, insertErr)
+		utils.ErrorHandler(insertErr, c, http.StatusInternalServerError, false, insertErr.Error())
 
 		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed In !", nil)
 		ctx.Done()
@@ -133,7 +135,7 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
-		filter := bson.M{"email", user.Email} // Map
+		filter := bson.M{"email": user.Email} // Map
 		err := UserCollection.FindOne(ctx, filter).Decode(&foundUser)
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Login Email or Password is Incorrect !")
 
@@ -156,3 +158,7 @@ func Login() gin.HandlerFunc {
 // bson.D{}  -->> D is an ordered representation of a BSON document. This type should be used when the order of the elements matters, such as MongoDB command documents. --->> (Slice)
 
 // bson.M{}  -->>  M is an unordered representation of a BSON document. This type should be used when the order of the elements does not matter. This type is handled as a regular map[string]interface{} when encoding and decoding. --->> (Map)
+
+// bson.A{}: An ordered representation of a BSON array
+
+// bson.E{}: A single element inside a D type

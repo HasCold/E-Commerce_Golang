@@ -69,7 +69,7 @@ func (app *Application) AddToCart() gin.HandlerFunc {
 
 		err = database.AddProductToCart(ctx, app.prodCollection, app.userCollection, productId, userQueryId)
 		if err != nil {
-			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
+			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
 		}
 
 		utils.ResponseHandler(c, 200, true, "Successfully added to the cart", nil)
@@ -105,7 +105,7 @@ func (app *Application) RemoveItemFromCart() gin.HandlerFunc {
 
 		err = database.RemoveCartItem(ctx, app.prodCollection, app.userCollection, productId, userQueryID)
 		if err != nil {
-			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
+			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
 		}
 
 		utils.ResponseHandler(c, 200, true, "Successfully remove item from the cart", nil)
@@ -136,14 +136,20 @@ func GetItemFromCart() gin.HandlerFunc {
 
 		var filledCart models.User
 
-		find := bson.D{"_id", userId}
+		find := bson.D{{Key: "_id", Value: userId}}
 		err := UserCollection.FindOne(ctx, find).Decode(&filledCart)
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong. Please try again !")
 
-		filter_match_stage := bson.D{"$match", bson.D{"_id", userId}}
-		unwind_stage := bson.D{"$unwind", bson.D{"path", "$user_cart"}}
+		filter_match_stage := bson.D{{Key: "$match", Value: bson.D{{Key: "_id", Value: userId}}}}
+		unwind_stage := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$user_cart"}}}}
 		// The aggregation pipeline uses the $group stage to group the documents by the _id field,
-		grouping_stage := bson.D{"$group", bson.D{"_id", "$_id"}, bson.D{"total", bson.D{"$sum", "$user_cart.price"}}}
+		grouping_stage := bson.D{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$_id"},
+			{Key: "total", Value: bson.D{
+				{Key: "$sum", Value: "$user_cart.price"},
+			}},
+		},
+		}}
 
 		cursor, err := UserCollection.Aggregate(ctx, mongo.Pipeline{filter_match_stage, unwind_stage, grouping_stage})
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong !")
@@ -221,7 +227,7 @@ func (app *Application) InstantBuy() gin.HandlerFunc {
 
 		err = database.InstantBuyer(ctx, app.prodCollection, app.userCollection, productId, userQueryID)
 		if err != nil {
-			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err)
+			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
 		}
 
 		utils.ResponseHandler(c, 200, true, "Successfully placed the order", nil)

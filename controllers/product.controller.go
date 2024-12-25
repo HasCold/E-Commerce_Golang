@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var ProdCollection *mongo.Collection = database.ProductData(database.Client, "Products")
@@ -31,8 +30,7 @@ func GetAllProducts() gin.HandlerFunc {
 		defer cancel()
 
 		// Each section uses the following cursor variable, which is a Cursor struct that contains all the documents in a collection:
-		findOption := options.Find()
-		cursor, err := ProdCollection.Find(ctx, bson.D{}, findOption)
+		cursor, err := ProdCollection.Find(ctx, bson.D{{}})
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong. Please try again !")
 
 		// To retrieve documents from your cursor individually while blocking the current goroutine, use the Next() method.
@@ -75,7 +73,6 @@ func SearchProductByQuery() gin.HandlerFunc {
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
 
-		findOptions := options.Find()
 		// The $regex operator is used to perform a regex search with the case-insensitive(Mean uppercase and lowercase letter treated be as same) option $options: 'i', and the caret ^ in the regex pattern ensures that the search starts with the given letters.
 		search := bson.M{
 			"product_name": bson.M{
@@ -83,7 +80,7 @@ func SearchProductByQuery() gin.HandlerFunc {
 				"$options": "i",
 			},
 		}
-		cursor, err := ProdCollection.Find(ctx, search, findOptions)
+		cursor, err := ProdCollection.Find(ctx, search)
 		utils.ErrorHandler(err, c, http.StatusNotFound, false, "Something went wrong. Please try again")
 
 		// To retrieve documents from your cursor individually while blocking the current goroutine, use the Next() method.

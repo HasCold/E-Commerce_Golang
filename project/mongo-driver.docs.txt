@@ -4,3 +4,15 @@
 . https://github.com/mongodb/mongo-go-driver
 
 . https://www.mongodb.com/docs/drivers/go/current/fundamentals/bson/#std-label-golang-bson
+
+-------------------------------------------------------------------------------------------------------
+
+The Go driver provides four main types for working with BSON data:
+
+D: An ordered representation of a BSON document (slice)
+
+M: An unordered representation of a BSON document (map)
+
+A: An ordered representation of a BSON array
+
+E: A single element inside a D type
