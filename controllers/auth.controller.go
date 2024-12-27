@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
+	"ecommerce/constants"
 	"ecommerce/database"
 	"ecommerce/models"
 	"ecommerce/utils"
@@ -21,6 +23,13 @@ import (
 
 var validate *validator.Validate = validator.New()
 var UserCollection *mongo.Collection = database.UserData(database.Client, "Users")
+var ExpiryTime, _ = strconv.Atoi(constants.EXPIRATION_HOURS)
+
+var jwtWrapper = utils.JWTWrapper{
+	SecretKey:       constants.SECRET_KEY,
+	Issuer:          constants.ISSUED_BY,
+	ExpirationHours: ExpiryTime,
+}
 
 func HashPassword(password string) string {
 	// ASCII Characters (Basic English):
@@ -73,6 +82,7 @@ func SignUp() gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": validationErr.Error(),
 			})
+			return
 		}
 
 		filter := bson.D{{Key: "email", Value: user.Email}}
@@ -100,7 +110,7 @@ func SignUp() gin.HandlerFunc {
 		hexValue := user.ID.Hex() // Hex returns the hex encoding of the ObjectID as a string.
 		user.User_ID = &hexValue
 
-		token, refresh_token, _ := utils.TokenGenerator(*user.Email, *user.First_Name, *user.Last_Name, *user.User_ID)
+		token, refresh_token, _ := jwtWrapper.TokenGenerator(*user.Email, *user.First_Name, *user.Last_Name, *user.User_ID)
 
 		user.Token = &token
 		user.Refresh_Token = &refresh_token
@@ -146,9 +156,9 @@ func Login() gin.HandlerFunc {
 			utils.ResponseHandler(c, http.StatusInternalServerError, false, "Error: "+msg, nil)
 		}
 
-		token, refreshToken, _ := utils.TokenGenerator(*foundUser.Email, *foundUser.First_Name, *foundUser.Last_Name, *foundUser.User_ID)
+		token, refreshToken, _ := jwtWrapper.TokenGenerator(*foundUser.Email, *foundUser.First_Name, *foundUser.Last_Name, *foundUser.User_ID)
 
-		utils.UpdateAllTokens(token, refreshToken, *foundUser.User_ID)
+		jwtWrapper.UpdateAllTokens(token, refreshToken, *foundUser.User_ID)
 
 		utils.ResponseHandler(c, http.StatusFound, true, "Login Successfully !", foundUser)
 		ctx.Done()

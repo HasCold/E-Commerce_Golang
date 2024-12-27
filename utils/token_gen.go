@@ -22,13 +22,13 @@ type CustomSignedDetails struct {
 	jwt.RegisteredClaims
 }
 
-type jwtWrapper struct {
+type JWTWrapper struct {
 	SecretKey       string
 	Issuer          string
-	ExpirationHours int64
+	ExpirationHours int
 }
 
-func (j *jwtWrapper) TokenGenerator(email, firstName, lastName, userId string) (signedToken string, signedRefreshToken string, err error) {
+func (j *JWTWrapper) TokenGenerator(email, firstName, lastName, userId string) (signedToken string, signedRefreshToken string, err error) {
 	claims := &CustomSignedDetails{
 		Email:      email,
 		First_Name: firstName,
@@ -63,7 +63,7 @@ func (j *jwtWrapper) TokenGenerator(email, firstName, lastName, userId string) (
 	return signedtoken, signedrefreshtoken, nil
 }
 
-func (j *jwtWrapper) ValidateToken(signedToken string) (claim *CustomSignedDetails, msg string) {
+func (j *JWTWrapper) ValidateToken(signedToken string) (claim *CustomSignedDetails, msg string) {
 	token, err := jwt.ParseWithClaims(
 		signedToken,
 		&CustomSignedDetails{},
@@ -93,7 +93,7 @@ func (j *jwtWrapper) ValidateToken(signedToken string) (claim *CustomSignedDetai
 	return claims, msg
 }
 
-func (j *jwtWrapper) UpdateAllTokens(signedtoken string, signedrefreshToken string, userId string) {
+func (j *JWTWrapper) UpdateAllTokens(signedtoken string, signedrefreshToken string, userId string) {
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
