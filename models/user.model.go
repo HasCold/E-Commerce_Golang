@@ -27,7 +27,7 @@ type User struct {
 	User_ID         *string            `json:"user_id" bson:"user_id"`
 	User_Cart       []ProductUser      `json:"user_cart" bson:"user_cart"`
 	Address_Details []Address          `json:"address" bson:"address"`
-	Order_Status    []Order            `json:"order_status" bson:"order_status"`
+	Order_Status    []Order            `json:"orders" bson:"orders"`
 }
 
 // ---- Reason to Use *string (Pointer String)
