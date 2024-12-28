@@ -53,7 +53,7 @@ func AddAddress() gin.HandlerFunc {
 		// For each group of documents that share the same address_id, the count field will be calculated as the sum of 1s for each document in the group.
 		grouping_stage := bson.D{{Key: "$group", Value: bson.D{{Key: "_id", Value: "$address_id"}, {Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}}}}}
 
-		cursor, err := UserCollection.Aggregate(ctx, mongo.Pipeline(match_filter_stage, unwind_stage, grouping_stage))
+		cursor, err := UserCollection.Aggregate(ctx, mongo.Pipeline{match_filter_stage, unwind_stage, grouping_stage})
 		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Internal Server Error")
 
 		var addressInfo []bson.M

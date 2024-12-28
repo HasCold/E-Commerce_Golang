@@ -104,7 +104,27 @@ func SearchProductByQuery() gin.HandlerFunc {
 }
 
 func ProductViewerAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
 
+		if c.Request.Method != "POST" {
+			c.JSON(http.StatusBadRequest, "Request method is invalid")
+			c.Abort()
+			return
+		}
+
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		var products models.Product
+		err := c.BindJSON(&products)
+		utils.ErrorHandler(err, c, http.StatusBadRequest, false, err.Error())
+
+		_, err = ProdCollection.InsertOne(ctx, products)
+		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
+
+		utils.ResponseHandler(c, http.StatusOK, true, "Successfully added the products", nil)
+		ctx.Done()
+	}
 }
 
 // Match criteria with literal values use the following format:

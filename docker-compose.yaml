@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  
+  mongo:
+    image: mongo:6.0.4
+    container_name: mongo
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: development
+      MONGO_INITDB_ROOT_PASSWORD: testpassword
+
+  mongo-express: 
+    image: mongo-express:latest
+    container_name: mongo-express
+    depends_on:
+      - mongo
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGO_INITDB_ROOT_USERNAME: development
+      ME_CONFIG_MONGO_INITDB_ROOT_PASSWORD: testpassword
+      ME_CONFIG_MONGODB_URL: mongodb://development:testpassword@mongo:27017/
