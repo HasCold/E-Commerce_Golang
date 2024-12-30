@@ -15,5 +15,5 @@ func UserRoutes(incomingRequest *gin.Engine) { // incomingRequest is a pointer t
 	incomingRequest.POST("/admin/addproduct", controllers.ProductViewerAdmin())
 
 	incomingRequest.POST("/users/productview", controllers.GetAllProducts())
-	incomingRequest.POST("/user/search", controllers.SearchProductByQuery())
+	incomingRequest.POST("/users/search", controllers.SearchProductByQuery())
 }

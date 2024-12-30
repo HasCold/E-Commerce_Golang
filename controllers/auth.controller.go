@@ -23,12 +23,24 @@ import (
 
 var validate *validator.Validate = validator.New()
 var UserCollection *mongo.Collection = database.UserData(database.Client, "Users")
-var ExpiryTime, _ = strconv.Atoi(constants.EXPIRATION_HOURS)
 
-var jwtWrapper = utils.JWTWrapper{
-	SecretKey:       constants.SECRET_KEY,
-	Issuer:          constants.ISSUED_BY,
-	ExpirationHours: ExpiryTime,
+var jwtWrapper utils.JWTWrapper
+
+var SECRET_KEY string
+var ISSUED_BY string
+var EXPIRATION_HOURS string
+var ExpiryTime int
+
+func config() {
+	constants.LoadENV()
+
+	ExpiryTime, _ = strconv.Atoi(constants.EXPIRATION_HOURS)
+
+	jwtWrapper = utils.JWTWrapper{
+		SecretKey:       constants.SECRET_KEY,
+		Issuer:          constants.ISSUED_BY,
+		ExpirationHours: ExpiryTime,
+	}
 }
 
 func HashPassword(password string) string {
@@ -57,11 +69,12 @@ func VerifyPassword(userPassword string, hashPassword string) (bool, string) {
 }
 
 func SignUp() gin.HandlerFunc {
-
 	// Closure Func
 	return func(c *gin.Context) { // c is a pointer to a gin.Context struct
-		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second) // Timeout Handling: Ensures that long-running operations (like database queries or API calls) don't block your application indefinitely.
-		defer cancel()                                                           //  defer will execute this at the end of all nearby function execution ; Resource Management.
+		config()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second) // Timeout Handling: Ensures that long-running operations (like database queries or API calls) don't block your application indefinitely.
+		defer cancel()                                                            //  defer will execute this at the end of all nearby function execution ; Resource Management.
 
 		if c.Request.Method != "POST" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request method is invalid"})
@@ -121,7 +134,7 @@ func SignUp() gin.HandlerFunc {
 		_, insertErr := UserCollection.InsertOne(ctx, user)
 		utils.ErrorHandler(insertErr, c, http.StatusInternalServerError, false, insertErr.Error())
 
-		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed In !", nil)
+		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed Up !", nil)
 		ctx.Done()
 	}
 
@@ -129,6 +142,8 @@ func SignUp() gin.HandlerFunc {
 
 func Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		config()
+
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 		defer cancel()
 

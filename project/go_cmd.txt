@@ -5,3 +5,13 @@
 . go get -u <github-package-url>  // to install the package locally
 
 . go install <github-package-url>  // to install the package globally 
+
+
+
+
+. docker-compose down
+. docker-compose up -d :-  
+
+. docker-compose or docker compose: The command to invoke Docker Compose.
+. up: Starts the services defined in the docker-compose.yml file.
+. -d: Runs the services in detached mode (in the background).

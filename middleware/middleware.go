@@ -10,16 +10,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var ExpiryTime, _ = strconv.Atoi(constants.EXPIRATION_HOURS)
+var SECRET_KEY string
+var ISSUED_BY string
+var EXPIRATION_HOURS string
+var ExpiryTime int
+
+func config() {
+	constants.LoadENV()
+	SECRET_KEY = constants.SECRET_KEY
+	ISSUED_BY = constants.ISSUED_BY
+	EXPIRATION_HOURS = constants.EXPIRATION_HOURS
+	ExpiryTime, _ = strconv.Atoi(EXPIRATION_HOURS)
+}
 
 var jwtWrapper = utils.JWTWrapper{
-	SecretKey:       constants.SECRET_KEY,
-	Issuer:          constants.ISSUED_BY,
+	SecretKey:       SECRET_KEY,
+	Issuer:          ISSUED_BY,
 	ExpirationHours: ExpiryTime,
 }
 
 func Authentication() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		config()
+
 		clientToken := c.Request.Header.Get("Authorization")
 		if clientToken == "" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "No authorizaion header provided !"})

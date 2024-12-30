@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"ecommerce/constants"
 	"fmt"
 	"log"
 	"time"
@@ -12,13 +13,15 @@ import (
 )
 
 func DBSetup() *mongo.Client {
-	uri := "localhost:27017"
+
+	constants.LoadENV()
+	mongoURI := constants.MONGO_URI
 
 	// Golang in-built package Context has some information that may be required to our mongoDB or functions or handlers or routers
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf("%v%v", "mongodb://", uri)))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatal("Error in connecting mongoDB :- ", err)
 	}
