@@ -2,16 +2,13 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
-	"ecommerce/constants"
+	"ecommerce/config"
 	"ecommerce/database"
 	"ecommerce/models"
-	"ecommerce/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -23,25 +20,6 @@ import (
 
 var validate *validator.Validate = validator.New()
 var UserCollection *mongo.Collection = database.UserData(database.Client, "Users")
-
-var jwtWrapper utils.JWTWrapper
-
-var SECRET_KEY string
-var ISSUED_BY string
-var EXPIRATION_HOURS string
-var ExpiryTime int
-
-func config() {
-	constants.LoadENV()
-
-	ExpiryTime, _ = strconv.Atoi(constants.EXPIRATION_HOURS)
-
-	jwtWrapper = utils.JWTWrapper{
-		SecretKey:       constants.SECRET_KEY,
-		Issuer:          constants.ISSUED_BY,
-		ExpirationHours: ExpiryTime,
-	}
-}
 
 func HashPassword(password string) string {
 	// ASCII Characters (Basic English):
@@ -71,15 +49,15 @@ func VerifyPassword(userPassword string, hashPassword string) (bool, string) {
 func SignUp() gin.HandlerFunc {
 	// Closure Func
 	return func(c *gin.Context) { // c is a pointer to a gin.Context struct
-		config()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second) // Timeout Handling: Ensures that long-running operations (like database queries or API calls) don't block your application indefinitely.
-		defer cancel()                                                            //  defer will execute this at the end of all nearby function execution ; Resource Management.
-
 		if c.Request.Method != "POST" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request method is invalid"})
 			return
 		}
+
+		config.TokenSetting()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second) // Timeout Handling: Ensures that long-running operations (like database queries or API calls) don't block your application indefinitely.
+		defer cancel()                                                            //  defer will execute this at the end of all nearby function execution ; Resource Management.
 
 		var user models.User
 
@@ -100,17 +78,47 @@ func SignUp() gin.HandlerFunc {
 
 		filter := bson.D{{Key: "email", Value: user.Email}}
 		count, err := UserCollection.CountDocuments(ctx, filter)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
+		if err != nil {
+			log.Println(err)
+			// Triggers a panic: After logging the error, it calls the panic() function, which stops the normal execution of the program and begins the unwinding of the stack. This allows deferred functions to execute before the program terminates.
+			// log.Panic(err)
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+
+			return
+		}
+		// utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
 
 		if count > 0 {
-			utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits", nil)
+			// utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits", nil)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "User already exists",
+			})
+
+			return
 		}
 
 		count, err = UserCollection.CountDocuments(ctx, bson.M{"phone": user.Phone})
-		utils.ErrorHandler(err, c, http.StatusBadRequest, false, err.Error())
+		if err != nil {
+			log.Println(err)
+
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
 
 		if count > 0 {
-			utils.ResponseHandler(c, http.StatusBadRequest, false, "Phone number already exists", nil)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Phone number already exists",
+			})
+			return
 		}
 
 		password := HashPassword(*user.Password)
@@ -123,7 +131,7 @@ func SignUp() gin.HandlerFunc {
 		hexValue := user.ID.Hex() // Hex returns the hex encoding of the ObjectID as a string.
 		user.User_ID = &hexValue
 
-		token, refresh_token, _ := jwtWrapper.TokenGenerator(*user.Email, *user.First_Name, *user.Last_Name, *user.User_ID)
+		token, refresh_token, _ := config.JwtWrapper.TokenGenerator(*user.Email, *user.First_Name, *user.Last_Name, *user.User_ID)
 
 		user.Token = &token
 		user.Refresh_Token = &refresh_token
@@ -132,9 +140,20 @@ func SignUp() gin.HandlerFunc {
 		user.Order_Status = make([]models.Order, 0)
 
 		_, insertErr := UserCollection.InsertOne(ctx, user)
-		utils.ErrorHandler(insertErr, c, http.StatusInternalServerError, false, insertErr.Error())
+		if insertErr != nil {
+			log.Println(insertErr)
 
-		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed Up !", nil)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": insertErr.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"success": true,
+			"message": "Successfully Signed Up !",
+		})
 		ctx.Done()
 	}
 
@@ -142,15 +161,15 @@ func SignUp() gin.HandlerFunc {
 
 func Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		config()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
-		defer cancel()
-
 		if c.Request.Method != "POST" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request Method is Invalid !"})
 			return
 		}
+
+		config.TokenSetting()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+		defer cancel()
 
 		var user models.User
 		var foundUser models.User
@@ -162,20 +181,37 @@ func Login() gin.HandlerFunc {
 
 		filter := bson.M{"email": user.Email} // Map
 		err := UserCollection.FindOne(ctx, filter).Decode(&foundUser)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Login Email or Password is Incorrect !")
+		if err != nil {
+			log.Println(err)
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Login Email or Password is Incorrect !",
+			})
+			return
+		}
 
 		PasswordisValid, msg := VerifyPassword(*user.Password, *foundUser.Password)
 
 		if !PasswordisValid {
-			fmt.Println(msg)
-			utils.ResponseHandler(c, http.StatusInternalServerError, false, "Error: "+msg, nil)
+			log.Println(msg)
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Error: " + msg,
+			})
+			return
 		}
 
-		token, refreshToken, _ := jwtWrapper.TokenGenerator(*foundUser.Email, *foundUser.First_Name, *foundUser.Last_Name, *foundUser.User_ID)
+		token, refreshToken, _ := config.JwtWrapper.TokenGenerator(*foundUser.Email, *foundUser.First_Name, *foundUser.Last_Name, *foundUser.User_ID)
 
-		jwtWrapper.UpdateAllTokens(token, refreshToken, *foundUser.User_ID)
+		config.JwtWrapper.UpdateAllTokens(token, refreshToken, *foundUser.User_ID)
 
-		utils.ResponseHandler(c, http.StatusFound, true, "Login Successfully !", foundUser)
+		c.JSON(http.StatusFound, gin.H{
+			"success": true,
+			"message": "Login Successfully !",
+			"data":    foundUser,
+		})
 		ctx.Done()
 	}
 }

@@ -4,13 +4,13 @@ import (
 	"context"
 	"ecommerce/database"
 	"ecommerce/models"
-	"ecommerce/utils"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -19,7 +19,7 @@ var ProdCollection *mongo.Collection = database.ProductData(database.Client, "Pr
 func GetAllProducts() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		if c.Request.Method != "POST" {
+		if c.Request.Method != "GET" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request method is invalid !"})
 			return
 		}
@@ -30,15 +30,26 @@ func GetAllProducts() gin.HandlerFunc {
 		defer cancel()
 
 		// Each section uses the following cursor variable, which is a Cursor struct that contains all the documents in a collection:
-		cursor, err := ProdCollection.Find(ctx, bson.D{{}})
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong. Please try again !")
+		cursor, err := ProdCollection.Find(ctx, bson.D{})
+		if err != nil {
+			log.Println(err)
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Something went wrong. Please try again !",
+			})
+			return
+		}
 
 		// To retrieve documents from your cursor individually while blocking the current goroutine, use the Next() method.
 		for cursor.Next(ctx) {
-			err := cursor.Decode(&ProductList) // Bind the individual product within the productList
+			var product models.Product
+			err := cursor.Decode(&product) // Bind the individual product within the productList
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			ProductList = append(ProductList, product)
 		}
 
 		if err := cursor.Err(); err != nil {
@@ -48,14 +59,18 @@ func GetAllProducts() gin.HandlerFunc {
 
 		defer cursor.Close(ctx)
 
-		utils.ResponseHandler(c, 200, true, "Successfully get all the products", ProductList)
+		c.JSON(http.StatusOK, gin.H{
+			"success":  true,
+			"message":  "Successfully get all the products",
+			"products": ProductList,
+		})
 		ctx.Done()
 	}
 }
 
 func SearchProductByQuery() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.Method != "POST" {
+		if c.Request.Method != "GET" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request method is invalid !"})
 			return
 		}
@@ -81,13 +96,23 @@ func SearchProductByQuery() gin.HandlerFunc {
 			},
 		}
 		cursor, err := ProdCollection.Find(ctx, search)
-		utils.ErrorHandler(err, c, http.StatusNotFound, false, "Something went wrong. Please try again")
+		if err != nil {
+			log.Println(err)
+
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": "Something went wrong. Please try again !",
+			})
+			return
+		}
 
 		// To retrieve documents from your cursor individually while blocking the current goroutine, use the Next() method.
 		for cursor.Next(ctx) {
-			if err := cursor.Decode(&searchProducts); err != nil {
+			var search models.Product
+			if err := cursor.Decode(&search); err != nil {
 				log.Fatal(err)
 			}
+			searchProducts = append(searchProducts, search)
 		}
 
 		if err := cursor.Err(); err != nil {
@@ -98,7 +123,11 @@ func SearchProductByQuery() gin.HandlerFunc {
 
 		defer cursor.Close(ctx)
 
-		utils.ResponseHandler(c, http.StatusOK, true, "", searchProducts)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    searchProducts,
+		})
+		// utils.ResponseHandler(c, http.StatusOK, true, "", searchProducts)
 		ctx.Done()
 	}
 }
@@ -117,12 +146,32 @@ func ProductViewerAdmin() gin.HandlerFunc {
 
 		var products models.Product
 		err := c.BindJSON(&products)
-		utils.ErrorHandler(err, c, http.StatusBadRequest, false, err.Error())
+		if err != nil {
+			log.Println(err)
 
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		products.Product_ID = primitive.NewObjectID()
 		_, err = ProdCollection.InsertOne(ctx, products)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
+		if err != nil {
+			log.Println(err)
 
-		utils.ResponseHandler(c, http.StatusOK, true, "Successfully added the products", nil)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Successfully added our Product Admin!!",
+		})
 		ctx.Done()
 	}
 }

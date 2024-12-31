@@ -1,0 +1,43 @@
+To set up **Air** for live reloading your Go project on Windows, follow these steps:
+
+1. **Install Air**:
+   - Open Command Prompt or PowerShell.
+   - Ensure your Go environment is set up correctly.
+   - Run the following command to install Air:
+     ```bash
+     go install github.com/air-verse/air@latest
+     ```
+   - After installation, ensure that the Go `bin` directory is in your system's `PATH` to access the `air` command globally.
+
+2. **Initialize Air in Your Project**:
+   - Navigate to your Go project directory:
+     ```bash
+     cd path\to\your\project
+     ```
+   - Generate the Air configuration file by running:
+     ```bash
+     air init
+     ```
+   - This command creates an `.air.toml` file in your project root, which you can customize as needed.
+
+3. **Configure Air (Optional)**:
+   - Open the `.air.toml` file in a text editor.
+   - Modify settings such as the build command, binary output location, and file watch patterns to suit your project's structure.
+   - For example, to specify the main package and output binary:
+     ```toml
+     [build]
+     cmd = "go build -o ./tmp/main.exe ./cmd/api/."
+     bin = "tmp/main.exe"
+     ```
+   - Ensure that the `cmd` path points to your main Go application file.
+
+4. **Run Air**:
+   - In your project directory, start Air by executing:
+     ```bash
+     air
+     ```
+   - Air will monitor your project files for changes and automatically rebuild and restart your application upon modifications.
+
+**Note**: If you encounter issues with the `air` command not being recognized, ensure that your Go `bin` directory is included in your system's `PATH`.
+
+For more detailed information and advanced configuration options, refer to the [Air GitHub repository](https://github.com/air-verse/air). 

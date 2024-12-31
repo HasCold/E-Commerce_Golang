@@ -1,37 +1,16 @@
 package middleware
 
 import (
-	"ecommerce/constants"
-	"ecommerce/utils"
+	"ecommerce/config"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-var SECRET_KEY string
-var ISSUED_BY string
-var EXPIRATION_HOURS string
-var ExpiryTime int
-
-func config() {
-	constants.LoadENV()
-	SECRET_KEY = constants.SECRET_KEY
-	ISSUED_BY = constants.ISSUED_BY
-	EXPIRATION_HOURS = constants.EXPIRATION_HOURS
-	ExpiryTime, _ = strconv.Atoi(EXPIRATION_HOURS)
-}
-
-var jwtWrapper = utils.JWTWrapper{
-	SecretKey:       SECRET_KEY,
-	Issuer:          ISSUED_BY,
-	ExpirationHours: ExpiryTime,
-}
-
 func Authentication() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		config()
+		config.TokenSetting()
 
 		clientToken := c.Request.Header.Get("Authorization")
 		if clientToken == "" {
@@ -43,7 +22,7 @@ func Authentication() gin.HandlerFunc {
 		if strings.HasPrefix(clientToken, "Bearer") {
 			token := strings.Split(clientToken, "Bearer ")
 
-			claims, err := jwtWrapper.ValidateToken(token[0]) // token[0] ==> actual token recived
+			claims, err := config.JwtWrapper.ValidateToken(strings.TrimSpace(token[1])) // token[0] ==> actual token recived
 			if err != "" {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 				c.Abort()

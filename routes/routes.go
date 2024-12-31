@@ -2,6 +2,7 @@ package routes
 
 import (
 	"ecommerce/controllers"
+	"ecommerce/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,8 +13,11 @@ import (
 func UserRoutes(incomingRequest *gin.Engine) { // incomingRequest is a pointer to a gin.Engine struct
 	incomingRequest.POST("/users/signup", controllers.SignUp())
 	incomingRequest.POST("/users/login", controllers.Login())
-	incomingRequest.POST("/admin/addproduct", controllers.ProductViewerAdmin())
 
-	incomingRequest.POST("/users/productview", controllers.GetAllProducts())
-	incomingRequest.POST("/users/search", controllers.SearchProductByQuery())
+	incomingRequest.GET("/users/search", controllers.SearchProductByQuery())
+	incomingRequest.GET("/users/productview", controllers.GetAllProducts())
+
+	incomingRequest.Use(middleware.Authentication())
+	// Below are the api's will authorize first from the middleware
+	incomingRequest.POST("/admin/addproduct", controllers.ProductViewerAdmin())
 }
