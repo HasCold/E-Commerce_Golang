@@ -35,6 +35,7 @@ func main() {
 
 	router := gin.Default() // Default returns a gin engine instance which is used to build a middleware, logger and routing purposes. creates a new Gin router with two middlewares already included : Logger and Recovery Middleware
 
+	routes.TestRoutes(router)
 	routes.UserRoutes(router)
 
 	// Pass the middleware in Use method

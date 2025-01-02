@@ -6,7 +6,8 @@
 
 . go install <github-package-url>  // to install the package globally 
 
-
+build command :- 
+. go build -o <output_name>
 
 
 . docker-compose down

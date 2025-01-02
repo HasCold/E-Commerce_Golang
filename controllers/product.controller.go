@@ -4,6 +4,7 @@ import (
 	"context"
 	"ecommerce/database"
 	"ecommerce/models"
+	"ecommerce/utils"
 	"log"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var ProdCollection *mongo.Collection = database.ProductData(database.Client, "Products")
@@ -29,15 +31,12 @@ func GetAllProducts() gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
 
+		opts := options.Find().SetSort(bson.D{{Key: "_id", Value: -1}})
 		// Each section uses the following cursor variable, which is a Cursor struct that contains all the documents in a collection:
-		cursor, err := ProdCollection.Find(ctx, bson.D{})
+		cursor, err := ProdCollection.Find(ctx, bson.D{}, opts)
 		if err != nil {
 			log.Println(err)
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"message": "Something went wrong. Please try again !",
-			})
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Something went wrong. Please try again !")
 			return
 		}
 
@@ -46,6 +45,7 @@ func GetAllProducts() gin.HandlerFunc {
 			var product models.Product
 			err := cursor.Decode(&product) // Bind the individual product within the productList
 			if err != nil {
+				log.Println(err)
 				log.Fatal(err)
 			}
 
@@ -98,11 +98,7 @@ func SearchProductByQuery() gin.HandlerFunc {
 		cursor, err := ProdCollection.Find(ctx, search)
 		if err != nil {
 			log.Println(err)
-
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"message": "Something went wrong. Please try again !",
-			})
+			utils.ErrorHandler(c, http.StatusNotFound, false, "Something went wrong. Please try again !")
 			return
 		}
 
@@ -123,11 +119,7 @@ func SearchProductByQuery() gin.HandlerFunc {
 
 		defer cursor.Close(ctx)
 
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"data":    searchProducts,
-		})
-		// utils.ResponseHandler(c, http.StatusOK, true, "", searchProducts)
+		utils.ResponseHandler(c, http.StatusOK, true, "", searchProducts)
 		ctx.Done()
 	}
 }
@@ -148,11 +140,7 @@ func ProductViewerAdmin() gin.HandlerFunc {
 		err := c.BindJSON(&products)
 		if err != nil {
 			log.Println(err)
-
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
+			utils.ErrorHandler(c, http.StatusBadRequest, false, err.Error())
 			return
 		}
 
@@ -160,18 +148,11 @@ func ProductViewerAdmin() gin.HandlerFunc {
 		_, err = ProdCollection.InsertOne(ctx, products)
 		if err != nil {
 			log.Println(err)
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"message": "Successfully added our Product Admin!!",
-		})
+		utils.ResponseHandler(c, http.StatusOK, true, "Successfully added our Product Admin!!", nil)
 		ctx.Done()
 	}
 }

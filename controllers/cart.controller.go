@@ -41,6 +41,12 @@ func NewApplication(prodCollection, userCollection *mongo.Collection) *Applicati
 
 func (app *Application) AddToCart() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		if c.Request.Method != "GET" {
+			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request method is invalid !"})
+			return
+		}
+
 		productQueryId := c.Query("productId")
 		if productQueryId == "" {
 			log.Println("Product id is empty")
@@ -69,7 +75,9 @@ func (app *Application) AddToCart() gin.HandlerFunc {
 
 		err = database.AddProductToCart(ctx, app.prodCollection, app.userCollection, productId, userQueryId)
 		if err != nil {
-			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, err.Error())
+			return
 		}
 
 		utils.ResponseHandler(c, 200, true, "Successfully added to the cart", nil)
@@ -79,6 +87,12 @@ func (app *Application) AddToCart() gin.HandlerFunc {
 
 func (app *Application) RemoveItemFromCart() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		if c.Request.Method != "GET" {
+			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request method is invalid !"})
+			return
+		}
+
 		productQueryId := c.Query("productId")
 		if productQueryId == "" {
 			log.Println("Product id is empty")
@@ -105,7 +119,8 @@ func (app *Application) RemoveItemFromCart() gin.HandlerFunc {
 
 		err = database.RemoveCartItem(ctx, app.prodCollection, app.userCollection, productId, userQueryID)
 		if err != nil {
-			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, err.Error())
+			return
 		}
 
 		utils.ResponseHandler(c, 200, true, "Successfully remove item from the cart", nil)
@@ -116,12 +131,12 @@ func (app *Application) RemoveItemFromCart() gin.HandlerFunc {
 
 func GetItemFromCart() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.Method != "POST" {
+		if c.Request.Method != "GET" {
 			c.JSON(http.StatusMethodNotAllowed, "Request method is invalid")
 			return
 		}
 
-		user_id := c.Query("user_id")
+		user_id := c.Query("userId")
 		if user_id == "" {
 			c.Header("Content-Type", "application/json")
 			c.JSON(http.StatusNotFound, "Invalid id")
@@ -138,7 +153,12 @@ func GetItemFromCart() gin.HandlerFunc {
 
 		find := bson.D{{Key: "_id", Value: userId}}
 		err := UserCollection.FindOne(ctx, find).Decode(&filledCart)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong. Please try again !")
+
+		if err != nil {
+			log.Println("Error decoding user_cart:", err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, err.Error())
+			return
+		}
 
 		filter_match_stage := bson.D{{Key: "$match", Value: bson.D{{Key: "_id", Value: userId}}}}
 		unwind_stage := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$user_cart"}}}}
@@ -152,15 +172,22 @@ func GetItemFromCart() gin.HandlerFunc {
 		}}
 
 		cursor, err := UserCollection.Aggregate(ctx, mongo.Pipeline{filter_match_stage, unwind_stage, grouping_stage})
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong !")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Something went wrong !")
+			return
+		}
 
 		var listing []bson.M
 
 		for cursor.Next(ctx) {
-			if err := cursor.Decode(&listing); err != nil {
+			var listItem bson.M
+			if err := cursor.Decode(&listItem); err != nil {
 				log.Println("Error while doing aggregation in GetItemFromCart function ", err)
 				log.Panic(err)
 			}
+
+			listing = append(listing, listItem)
 		}
 
 		if err = cursor.Err(); err != nil {
@@ -182,6 +209,12 @@ func GetItemFromCart() gin.HandlerFunc {
 
 func (app *Application) BuyFromCart() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		if c.Request.Method != "GET" {
+			c.JSON(http.StatusMethodNotAllowed, "Request method is invalid")
+			return
+		}
+
 		userQueryId := c.Query("userId")
 		if userQueryId == "" {
 			log.Panicln("User id is empty")
@@ -192,7 +225,10 @@ func (app *Application) BuyFromCart() gin.HandlerFunc {
 		defer cancel()
 
 		err := database.BuyItemFromCart(ctx, app.userCollection, userQueryId)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
+		if err != nil {
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, err.Error())
+			return
+		}
 
 		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully placed the order", nil)
 		ctx.Done()
@@ -227,7 +263,8 @@ func (app *Application) InstantBuy() gin.HandlerFunc {
 
 		err = database.InstantBuyer(ctx, app.prodCollection, app.userCollection, productId, userQueryID)
 		if err != nil {
-			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, err.Error())
+			return
 		}
 
 		utils.ResponseHandler(c, 200, true, "Successfully placed the order", nil)

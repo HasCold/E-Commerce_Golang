@@ -37,10 +37,13 @@ func AddProductToCart(ctx context.Context, prodCollection *mongo.Collection, use
 	var productCart []models.ProductUser
 
 	for searchFromDB.Next(ctx) {
-		if err := searchFromDB.Decode(&productCart); err != nil {
+		var product models.ProductUser
+		if err := searchFromDB.Decode(&product); err != nil {
 			log.Println(err)
 			return ErrCantDecodeProducts
 		}
+
+		productCart = append(productCart, product)
 	}
 
 	if err = searchFromDB.Err(); err != nil {
@@ -56,9 +59,10 @@ func AddProductToCart(ctx context.Context, prodCollection *mongo.Collection, use
 	}
 
 	filter := bson.D{{Key: "_id", Value: userId}}
-	update := bson.D{{Key: "$push", Value: bson.D{{Key: "user_cart", Value: productCart}}}}
+	update := bson.D{{Key: "$push", Value: bson.D{{Key: "user_cart", Value: bson.D{{Key: "$each", Value: productCart}}}}}} // for pushing multiple products,
 
 	_, err = userCollection.UpdateOne(ctx, filter, update)
+
 	if err != nil {
 		log.Println(err)
 		return ErrCantUpdateUser
@@ -165,7 +169,7 @@ func BuyItemFromCart(ctx context.Context, userCollection *mongo.Collection, user
 	filter2 := bson.D{{Key: "_id", Value: userId}}
 	// 	Use orders.$[].order_list to update all orders.
 	// Use orders.$[<identifier>].order_list with arrayFilters for selective updates.
-	update2 := bson.M{"$push": bson.M{"orders.$[].order_list": getCartItems.User_Cart}}
+	update2 := bson.M{"$push": bson.M{"orders.$[].order_list": bson.M{"$each": getCartItems.User_Cart}}}
 
 	_, err = userCollection.UpdateOne(ctx, filter2, update2)
 	if err != nil {

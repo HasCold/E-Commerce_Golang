@@ -9,6 +9,7 @@ import (
 	"ecommerce/config"
 	"ecommerce/database"
 	"ecommerce/models"
+	"ecommerce/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -82,42 +83,24 @@ func SignUp() gin.HandlerFunc {
 			log.Println(err)
 			// Triggers a panic: After logging the error, it calls the panic() function, which stops the normal execution of the program and begins the unwinding of the stack. This allows deferred functions to execute before the program terminates.
 			// log.Panic(err)
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
-
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, err.Error())
 			return
 		}
-		// utils.ErrorHandler(err, c, http.StatusInternalServerError, false, err.Error())
 
 		if count > 0 {
-			// utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits", nil)
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": "User already exists",
-			})
-
+			utils.ResponseHandler(c, http.StatusBadRequest, false, "User already exits", nil)
 			return
 		}
 
 		count, err = UserCollection.CountDocuments(ctx, bson.M{"phone": user.Phone})
 		if err != nil {
 			log.Println(err)
-
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
+			utils.ResponseHandler(c, http.StatusBadRequest, false, err.Error(), nil)
 			return
 		}
 
 		if count > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": "Phone number already exists",
-			})
+			utils.ResponseHandler(c, http.StatusBadRequest, false, "Phone number already exists", nil)
 			return
 		}
 
@@ -142,18 +125,11 @@ func SignUp() gin.HandlerFunc {
 		_, insertErr := UserCollection.InsertOne(ctx, user)
 		if insertErr != nil {
 			log.Println(insertErr)
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"message": insertErr.Error(),
-			})
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, insertErr.Error())
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{
-			"success": true,
-			"message": "Successfully Signed Up !",
-		})
+		utils.ResponseHandler(c, http.StatusCreated, true, "Successfully Signed Up !", nil)
 		ctx.Done()
 	}
 
@@ -183,11 +159,7 @@ func Login() gin.HandlerFunc {
 		err := UserCollection.FindOne(ctx, filter).Decode(&foundUser)
 		if err != nil {
 			log.Println(err)
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"message": "Login Email or Password is Incorrect !",
-			})
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Login Email or Password is Incorrect !")
 			return
 		}
 
@@ -195,11 +167,7 @@ func Login() gin.HandlerFunc {
 
 		if !PasswordisValid {
 			log.Println(msg)
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"message": "Error: " + msg,
-			})
+			utils.ResponseHandler(c, http.StatusInternalServerError, false, "Error: "+msg, nil)
 			return
 		}
 
@@ -207,11 +175,7 @@ func Login() gin.HandlerFunc {
 
 		config.JwtWrapper.UpdateAllTokens(token, refreshToken, *foundUser.User_ID)
 
-		c.JSON(http.StatusFound, gin.H{
-			"success": true,
-			"message": "Login Successfully !",
-			"data":    foundUser,
-		})
+		utils.ResponseHandler(c, http.StatusFound, true, "Login Successfully !", foundUser)
 		ctx.Done()
 	}
 }

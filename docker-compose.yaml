@@ -10,6 +10,9 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: development
       MONGO_INITDB_ROOT_PASSWORD: testpassword
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
 
   mongo-express: 
     image: mongo-express:latest
@@ -22,3 +25,9 @@ services:
       ME_CONFIG_MONGO_INITDB_ROOT_USERNAME: development
       ME_CONFIG_MONGO_INITDB_ROOT_PASSWORD: testpassword
       ME_CONFIG_MONGODB_URL: mongodb://development:testpassword@mongo:27017/
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local

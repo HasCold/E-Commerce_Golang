@@ -21,7 +21,7 @@ func AddAddress() gin.HandlerFunc {
 			return
 		}
 
-		user_id := c.Query("user_id")
+		user_id := c.Query("userId")
 		if user_id == "" {
 			c.Header("Content-Type", "application/json")
 			c.Abort()
@@ -30,7 +30,11 @@ func AddAddress() gin.HandlerFunc {
 
 		// Convert the string id into primitive object id
 		userId, err := primitive.ObjectIDFromHex(user_id)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Internal Server Error")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Internal Server Error")
+			return
+		}
 
 		var addresses models.Address
 
@@ -54,15 +58,22 @@ func AddAddress() gin.HandlerFunc {
 		grouping_stage := bson.D{{Key: "$group", Value: bson.D{{Key: "_id", Value: "$address_id"}, {Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}}}}}
 
 		cursor, err := UserCollection.Aggregate(ctx, mongo.Pipeline{match_filter_stage, unwind_stage, grouping_stage})
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Internal Server Error")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Internal Server Error")
+			return
+		}
 
 		var addressInfo []bson.M
 
 		for cursor.Next(ctx) {
-			if err := cursor.Decode(&addressInfo); err != nil {
+			var address bson.M
+			if err := cursor.Decode(&address); err != nil {
 				log.Println("Error while doing aggregation in AddAddress function ", err)
 				log.Panic(err)
 			}
+
+			addressInfo = append(addressInfo, address)
 		}
 
 		if err = cursor.Err(); err != nil {
@@ -86,7 +97,11 @@ func AddAddress() gin.HandlerFunc {
 			update := bson.D{{Key: "$push", Value: bson.D{{Key: "address", Value: addresses}}}}
 
 			_, err := UserCollection.UpdateOne(ctx, filter, update)
-			utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong")
+			if err != nil {
+				log.Println(err)
+				utils.ErrorHandler(c, http.StatusInternalServerError, false, "Something went wrong")
+				return
+			}
 
 		} else {
 			utils.ResponseHandler(c, http.StatusBadRequest, false, "Not Allowed", nil)
@@ -100,12 +115,12 @@ func AddAddress() gin.HandlerFunc {
 
 func EditHomeAddress() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.Method != "POST" {
+		if c.Request.Method != "PUT" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request Method is Invalid"})
 			return
 		}
 
-		user_id := c.Query("user_id")
+		user_id := c.Query("userId")
 		if user_id == "" {
 			c.Header("Content-Type", "application/json")
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Request"})
@@ -115,12 +130,17 @@ func EditHomeAddress() gin.HandlerFunc {
 
 		// Convert the string ID into primitive object_id
 		userId, err := primitive.ObjectIDFromHex(user_id)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Internal Server Error")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Internal Server Error")
+			return
+		}
 
 		var editAddress models.Address
 		editAddress.Address_ID = primitive.NewObjectID()
 		if err = c.BindJSON(&editAddress); err != nil {
 			c.JSON(http.StatusBadRequest, err.Error())
+			return
 		}
 
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
@@ -136,7 +156,11 @@ func EditHomeAddress() gin.HandlerFunc {
 		}}
 
 		_, err = UserCollection.UpdateOne(ctx, filter, update)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Something went wrong")
+			return
+		}
 
 		ctx.Done()
 		utils.ResponseHandler(c, http.StatusOK, true, "Successfully updated the home address", nil)
@@ -146,12 +170,12 @@ func EditHomeAddress() gin.HandlerFunc {
 
 func EditWorkAddress() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.Method != "POST" {
+		if c.Request.Method != "PUT" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request Method is Invalid"})
 			return
 		}
 
-		user_id := c.Query("user_id")
+		user_id := c.Query("userId")
 		if user_id == "" {
 			c.Header("Content-Type", "application/json")
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Request"})
@@ -161,7 +185,11 @@ func EditWorkAddress() gin.HandlerFunc {
 
 		// Convert the string ID into primitive object_id
 		userId, err := primitive.ObjectIDFromHex(user_id)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Internal Server Error")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Internal Server Error")
+			return
+		}
 
 		var editAddress models.Address
 		editAddress.Address_ID = primitive.NewObjectID()
@@ -183,7 +211,11 @@ func EditWorkAddress() gin.HandlerFunc {
 		}}
 
 		_, err = UserCollection.UpdateOne(ctx, filter, update)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Something went wrong")
+			return
+		}
 
 		ctx.Done()
 		utils.ResponseHandler(c, http.StatusOK, true, "Successfully updated the work address", nil)
@@ -193,11 +225,11 @@ func EditWorkAddress() gin.HandlerFunc {
 
 func DeleteAddress() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.Method != "POST" {
+		if c.Request.Method != "GET" {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Request method is Invalid"})
 		}
 
-		user_id := c.Query("user_id")
+		user_id := c.Query("userId")
 		if user_id == "" {
 			c.Header("Content-Type", "application/json")
 			c.JSON(http.StatusNotFound, gin.H{"Error": "Search Index is Invalid"})
@@ -208,7 +240,11 @@ func DeleteAddress() gin.HandlerFunc {
 		addresses := make([]models.Address, 0)
 		// Convert the string ID into primitive Object ID
 		userId, err := primitive.ObjectIDFromHex(user_id)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Internal Server Error")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Internal Server Error")
+			return
+		}
 
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
@@ -217,7 +253,11 @@ func DeleteAddress() gin.HandlerFunc {
 		update := bson.D{{Key: "$set", Value: bson.D{{Key: "address", Value: addresses}}}}
 
 		_, err = UserCollection.UpdateOne(ctx, filter, update)
-		utils.ErrorHandler(err, c, http.StatusInternalServerError, false, "Something went wrong. Please Try Again !")
+		if err != nil {
+			log.Println(err)
+			utils.ErrorHandler(c, http.StatusInternalServerError, false, "Something went wrong. Please Try Again !")
+			return
+		}
 
 		utils.ResponseHandler(c, http.StatusOK, true, "Successfully Deleted", nil)
 		ctx.Done()
